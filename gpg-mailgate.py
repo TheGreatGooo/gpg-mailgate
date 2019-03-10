@@ -29,8 +29,10 @@ import email.message
 import email.utils
 import GnuPG
 import os
+import random
 import re
 import smtplib
+import string
 import sys
 import syslog
 import traceback
@@ -158,7 +160,8 @@ def gpg_decrypt_all_payloads( message ):
 		attachment = MIMEBase('text', 'plain')
 		attachment.set_payload(message.as_string())
 		encoders.encode_base64(attachment)
-		attachment.add_header('Content-Disposition', 'attachment; filename="original-mail.txt"')
+		attachment.add_header('Content-Disposition', 'attachment; filename="original-mail-{}.txt"'.format(
+			''.join([random.choice(string.ascii_letters + string.digits) for n in range(12)])))
 		decrypted_message.attach(attachment)
 	return decrypted_message
 
