@@ -48,6 +48,11 @@ dec_regex = None
 # (see INSTALL for details)
 keyhome = /var/gpgmailgate/.gnupg
 
+# When decrypting a mail, the original signature information is lost. With this
+# setting, the original encrypted message and GPG output will be saved as
+# additional attachments to the mail. This allows for later manual verifcation.
+attach_original = no
+
 [smime]
 # the directory for the S/MIME certificate files
 cert_path = /var/gpgmailgate/smime

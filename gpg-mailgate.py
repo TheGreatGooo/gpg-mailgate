@@ -20,6 +20,7 @@
 #
 
 from ConfigParser import RawConfigParser
+from email import encoders
 from email.mime.base import MIMEBase
 from email.mime.multipart import MIMEMultipart
 import copy
@@ -153,7 +154,12 @@ def gpg_decrypt_all_payloads( message ):
 		# Check if message is PGP/INLINE encrypted without attachments (or unencrypted without attachments)
 		else:
 			decrypted_message = decrypt_inline_without_attachments(decrypted_message)
-
+	if cfg['gpg']['attach_original'] == "yes" and success:
+		attachment = MIMEBase('text', 'plain')
+		attachment.set_payload(message.as_string())
+		encoders.encode_base64(attachment)
+		attachment.add_header('Content-Disposition', 'attachment; filename="original-mail.txt"')
+		decrypted_message.attach(attachment)
 	return decrypted_message
 
 def decrypt_mime( decrypted_message ):
