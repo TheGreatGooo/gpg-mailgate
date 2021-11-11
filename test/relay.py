@@ -12,6 +12,8 @@ import sys
 import socket
 
 
+EXIT_UNAVAILABLE = 1
+
 BUFFER_SIZE = 4096
 EOM = "\r\n.\r\n"
 LAST_LINE = -3
@@ -32,8 +34,12 @@ def receive_and_confirm(session):
 
 def serve(port):
 	s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-	s.bind(('', port))
-	s.listen(1)
+	try:
+		s.bind(('', port))
+		s.listen(1)
+	except socket.error, e:
+		print "Cannot connect", e
+		sys.exit(EXIT_UNAVAILABLE)
 
 	(conn, addr) = s.accept()
 	conn.sendall(welcome("TEST SERVER"))

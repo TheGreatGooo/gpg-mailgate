@@ -8,7 +8,11 @@ import difflib
 import ConfigParser
 import logging
 
+from time import sleep
+
 EOL = "\n"
+
+DELAY = 3
 
 RELAY_SCRIPT = "test/relay.py"
 CONFIG_FILE = "test/gpg-mailgate.conf"
@@ -19,7 +23,7 @@ def build_config(config):
     cp = ConfigParser.ConfigParser()
 
     cp.add_section("logging")
-    cp.set("logging", "file", "/dev/stout")
+    cp.set("logging", "file", config["log_file"])
     cp.set("logging", "verbose", "yes")
 
     cp.add_section("gpg")
@@ -75,7 +79,7 @@ def report_result(message_file, expected_file, test_output):
         print diff_line
 
 def execute_e2e_test(message_file, expected_file, **kwargs):
-    test_command = "%s gpg-mailgate.py %s < %s" % (PYTHON_BIN, kwargs["from_addr"], message_file)
+    test_command = "GPG_MAILGATE_CONFIG=%s %s gpg-mailgate.py %s < %s" % (kwargs["config_path"], PYTHON_BIN, kwargs["to_addr"], message_file)
     result_command = "%s %s %d" % (PYTHON_BIN, RELAY_SCRIPT, kwargs["port"])
 
     logging.debug("Spawning: '%s'" % (result_command))
@@ -102,19 +106,26 @@ def load_config():
 
 config = load_config()
 
-logging.basicConfig(filename	= "e2e_test.log",
-                    format		= "%(pathname)s:%(lineno)d %(levelname)s [%(funcName)s] %(message)s",
+logging.basicConfig(filename	= "test/logs/e2e.log",
+                    format		= "%(asctime)s %(pathname)s:%(lineno)d %(levelname)s [%(funcName)s] %(message)s",
                     datefmt		= "%Y-%m-%d %H:%M:%S",
                     level		= logging.DEBUG)
 
-write_test_config(os.getcwd() + "/" + CONFIG_FILE,
+config_path = os.getcwd() + "/" + CONFIG_FILE
+
+write_test_config(config_path,
                   port				= config.getint("relay", "port"),
                   gpg_keyhome		= "test/keyhome",
-                  smime_certpath	= "test/certs")
+                  smime_certpath	= "test/certs",
+                  log_file			= "test/logs/gpg-mailgate.log")
 
 for case_no in range(1, config.getint("tests", "cases")+1):
     case_name = "case-%d" % (case_no)
+    print "Executing: %s" % (config.get(case_name, "descr"))
 
     execute_e2e_test(config.get(case_name, "in"), config.get(case_name, "out"),
-                    from_addr	= config.get(case_name, "from"),
-                    port		= config.getint("relay", "port"))
+                    config_path = config_path,
+                    to_addr	= config.get(case_name, "to"),
+                    port	= config.getint("relay", "port"))
+
+    sleep(DELAY)
