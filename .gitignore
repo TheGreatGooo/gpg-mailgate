@@ -26,6 +26,16 @@ pip-log.txt
 .tox
 nosetests.xml
 
+# GPG-Mailgate test files
+test/logs
+test/gpg-mailgate.conf
+
+# Emacs files
+*~
+TAGS
+TAGS-Python
+TAGS-PHP
+
 # Translations
 *.mo
 
