@@ -23,6 +23,13 @@ import subprocess
 import shutil
 import random
 import string
+import sys
+
+
+LINE_FINGERPRINT = 'fpr'
+LINE_USER_ID = 'uid'
+
+POS_FINGERPRINT = 9
 
 def private_keys( keyhome ):
 	cmd = ['/usr/bin/gpg', '--homedir', keyhome, '--list-secret-keys', '--with-colons']
@@ -42,14 +49,21 @@ def public_keys( keyhome ):
 	cmd = ['/usr/bin/gpg', '--homedir', keyhome, '--list-keys', '--with-colons']
 	p = subprocess.Popen( cmd, stdin=None, stdout=subprocess.PIPE, stderr=subprocess.PIPE )
 	p.wait()
+
 	keys = dict()
+	fingerprint = None
+	email = None
 	for line in p.stdout.readlines():
-		if line[0:3] == 'uid' or line[0:3] == 'pub':
+		if line[0:3] == LINE_FINGERPRINT:
+			fingerprint = line.split(':')[POS_FINGERPRINT]
+		if line[0:3] == LINE_USER_ID:
 			if ('<' not in line or '>' not in line):
 				continue
 			email = line.split('<')[1].split('>')[0]
-			fingerprint = line.split(':')[4]
+		if not (fingerprint is None or email is None):
 			keys[fingerprint] = email
+			fingerprint = None
+			email = None
 	return keys
 
 # confirms a key has a given email address

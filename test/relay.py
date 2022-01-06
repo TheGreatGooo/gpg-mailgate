@@ -25,6 +25,9 @@ def welcome(msg):
 def ok(msg = "OK"):
 	return "250 %s\r\n" % (msg)
 
+def bye():
+	return "251 Bye"
+
 def provide_message():
 	return "354 Enter a message, ending it with a '.' on a line by itself\r\n"
 
@@ -56,6 +59,11 @@ def serve(port):
 	while not message.endswith(EOM):
 		message += conn.recv(BUFFER_SIZE)
 	conn.sendall(ok("OK, id=test"))
+
+	conn.recv(BUFFER_SIZE)
+	conn.sendall(bye())
+
+	conn.close()
 
 	# Trim EOM marker as we're only interested in the message body.
 	return message[:-len(EOM)]

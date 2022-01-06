@@ -7,6 +7,7 @@ test: test/tmp test/logs pre-clean
 
 pre-clean:
 	rm -fv test/gpg-mailgate.conf
+	rm -f test/logs/*.log
 
 test/tmp:
 	mkdir test/tmp

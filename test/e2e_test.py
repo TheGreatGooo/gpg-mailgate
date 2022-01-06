@@ -36,6 +36,10 @@ def build_config(config):
     cp.set("relay", "host", "localhost")
     cp.set("relay", "port", config["port"])
 
+    cp.add_section("enc_keymap")
+    cp.set("enc_keymap", "alice@disposlab", "1CD245308F0963D038E88357973CF4D9387C44D7")
+    cp.set("enc_keymap", "bob@disposlab", "19CF4B47ECC9C47AFA84D4BD96F39FDA0E31BB67")
+
     logging.debug("Created config with keyhome=%s, cert_path=%s and relay at port %d" %
                   (config["gpg_keyhome"], config["smime_certpath"], config["port"]))
     return cp
@@ -68,18 +72,27 @@ def compare(result, expected):
                                 fromfile='expected',
                                 tofile='output')
 
-def report_result(message_file, expected_file, test_output):
-    expected = load_file(expected_file)
-    diff = compare(test_output, expected)
-    if len(list(diff)) > 0:
-        print "Output and the expected message (%s) don't match:" % (expected_file)
+def report_result(message_file, expected, test_output):
+    status = None
+    if expected in test_output:
+        status = "Success"
     else:
-        print "Message %s processed properly" % (message_file)
-    for diff_line in diff:
-        print diff_line
+        status = "Failure"
 
-def execute_e2e_test(message_file, expected_file, **kwargs):
-    test_command = "GPG_MAILGATE_CONFIG=%s %s gpg-mailgate.py %s < %s" % (kwargs["config_path"], PYTHON_BIN, kwargs["to_addr"], message_file)
+    print "%s %s" % (message_file.ljust(30, '.'), status)
+
+def frozen_time_expr(timestamp):
+    if timestamp is None:
+        return ""
+    else:
+        return "GPG_FROZEN_TIME=%s" % (timestamp)
+
+def execute_e2e_test(message_file, expected, **kwargs):
+    test_command = "GPG_MAILGATE_CONFIG=%s %s gpg-mailgate.py %s < %s" % (
+        kwargs["config_path"],
+        PYTHON_BIN,
+        kwargs["to_addr"],
+        message_file)
     result_command = "%s %s %d" % (PYTHON_BIN, RELAY_SCRIPT, kwargs["port"])
 
     logging.debug("Spawning: '%s'" % (result_command))
@@ -95,16 +108,16 @@ def execute_e2e_test(message_file, expected_file, **kwargs):
 
     logging.debug("Read %d characters of test output: '%s'" % (len(testout), testout))
 
-    report_result(message_file, expected_file, testout)
+    report_result(message_file, expected, testout)
 
-def load_config():
+def load_test_config():
     cp = ConfigParser.ConfigParser()
     cp.read("test/e2e.ini")
 
     return cp
 
 
-config = load_config()
+config = load_test_config()
 
 logging.basicConfig(filename	= "test/logs/e2e.log",
                     format		= "%(asctime)s %(pathname)s:%(lineno)d %(levelname)s [%(funcName)s] %(message)s",
@@ -123,9 +136,10 @@ for case_no in range(1, config.getint("tests", "cases")+1):
     case_name = "case-%d" % (case_no)
     print "Executing: %s" % (config.get(case_name, "descr"))
 
-    execute_e2e_test(config.get(case_name, "in"), config.get(case_name, "out"),
-                    config_path = config_path,
-                    to_addr	= config.get(case_name, "to"),
-                    port	= config.getint("relay", "port"))
+    execute_e2e_test(config.get(case_name, "in"),
+                     config.get(case_name, "out"),
+                     config_path	= config_path,
+                     to_addr		= config.get(case_name, "to"),
+                     port			= config.getint("relay", "port"))
 
-    sleep(DELAY)
+    # sleep(DELAY)
