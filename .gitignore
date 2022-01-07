@@ -28,6 +28,7 @@ nosetests.xml
 
 # GPG-Mailgate test files
 test/logs
+test/tmp
 test/gpg-mailgate.conf
 
 # Emacs files
