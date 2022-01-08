@@ -101,7 +101,7 @@ def confirm_key( content, email ):
 
 # adds a key and ensures it has the given email address
 def add_key( keyhome, content ):
-	p = subprocess.Popen( build_command(keyhome, '--import', '--batch'), stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE )
+	p = subprocess.Popen( ['/usr/bin/gpg', '--homedir', keyhome, '--import', '--batch'], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE )
 	p.communicate(input=content)
 	p.wait()
 
@@ -130,7 +130,7 @@ class GPGEncryptor:
 		self._message += message
 
 	def encrypt(self):
-		p = subprocess.Popen( self._command(), stdin=subprocess.PIPE, stdout=subprocess.PIPE,stderr=subprocess.PIPE )
+		p = subprocess.Popen( self._command(), stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE )
 		encdata = p.communicate(input=self._message)[0]
 		return (encdata, p.returncode)
 
@@ -158,7 +158,7 @@ class GPGDecryptor:
 		self._message += message
 
 	def decrypt(self):
-		p = subprocess.Popen( self._command(), stdin=subprocess.PIPE, stdout=subprocess.PIPE,stderr=subprocess.PIPE )
+		p = subprocess.Popen( self._command(), stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE )
 		decdata = p.communicate(input=self._message)[0]
 		return (decdata, p.returncode)
 

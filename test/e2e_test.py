@@ -24,7 +24,7 @@ import sys
 
 import difflib
 
-import ConfigParser
+import configparser
 import logging
 
 from time import sleep
@@ -35,7 +35,7 @@ CONFIG_FILE = "test/gpg-mailgate.conf"
 PYTHON_BIN = "python2.7"
 
 def build_config(config):
-    cp = ConfigParser.ConfigParser()
+    cp = configparser.ConfigParser()
 
     cp.add_section("logging")
     cp.set("logging", "file", config["log_file"])
@@ -83,7 +83,7 @@ def report_result(message_file, expected, test_output):
     else:
         status = "Failure"
 
-    print message_file.ljust(30), status
+    print(message_file.ljust(30), status)
 
 def execute_e2e_test(case_name, config, config_path):
     """Read test case configuration from config and run that test case.
@@ -116,7 +116,7 @@ def execute_e2e_test(case_name, config, config_path):
     report_result(config.get(case_name, "in"), config.get(case_name, "out"), testout)
 
 def load_test_config():
-    cp = ConfigParser.ConfigParser()
+    cp = configparser.ConfigParser()
     cp.read("test/e2e.ini")
 
     return cp
@@ -146,4 +146,4 @@ for case_no in range(1, config.getint("tests", "cases")+1):
 
     execute_e2e_test(case_name, config, config_path)
 
-print "See diagnostic output for details. Tests: '%s', Lacre: '%s'" % (config.get("tests", "e2e_log"), config.get("tests", "lacre_log"))
+print("See diagnostic output for details. Tests: '%s', Lacre: '%s'" % (config.get("tests", "e2e_log"), config.get("tests", "lacre_log")))

@@ -19,7 +19,7 @@
 #	along with gpg-mailgate source code. If not, see <http://www.gnu.org/licenses/>.
 #
 
-from ConfigParser import RawConfigParser
+from configparser import RawConfigParser
 import GnuPG
 import MySQLdb
 import smtplib
@@ -64,7 +64,7 @@ for sect in _cfg.sections():
 	for (name, value) in _cfg.items(sect):
 		cfg[sect][name] = value
 
-if cfg.has_key('database') and cfg['database'].has_key('enabled') and cfg['database']['enabled'] == 'yes' and cfg['database'].has_key('name') and cfg['database'].has_key('host') and cfg['database'].has_key('username') and cfg['database'].has_key('password'):
+if 'database' in cfg and 'enabled' in cfg['database'] and cfg['database']['enabled'] == 'yes' and 'name' in cfg['database'] and 'host' in cfg['database'] and 'username' in cfg['database'] and 'password' in cfg['database']:
 	connection = MySQLdb.connect(host = cfg['database']['host'], user = cfg['database']['username'], passwd = cfg['database']['password'], db = cfg['database']['name'], port = 3306)
 	cursor = connection.cursor()
 
@@ -83,17 +83,17 @@ if cfg.has_key('database') and cfg['database'].has_key('enabled') and cfg['datab
 				GnuPG.add_key(cfg['gpg']['keyhome'], row[0]) # import the key to gpg
 				cursor.execute("UPDATE gpgmw_keys SET status = 1 WHERE id = %s", (row[1],)) # mark key as accepted
 				appendLog('Imported key from <' + row[2] + '>')
-				if cfg['cron'].has_key('send_email') and cfg['cron']['send_email'] == 'yes':
+				if 'send_email' in cfg['cron'] and cfg['cron']['send_email'] == 'yes':
 					send_msg( "PGP key registration successful", "registrationSuccess.md", row[2] )
 			else:
 				cursor.execute("DELETE FROM gpgmw_keys WHERE id = %s", (row[1],)) # delete key
 				appendLog('Import confirmation failed for <' + row[2] + '>')
-				if cfg['cron'].has_key('send_email') and cfg['cron']['send_email'] == 'yes':
+				if 'send_email' in cfg['cron'] and cfg['cron']['send_email'] == 'yes':
 					send_msg( "PGP key registration failed", "registrationError.md", row[2] )
 		else:
 			# delete key so we don't continue processing it
 			cursor.execute("DELETE FROM gpgmw_keys WHERE id = %s", (row[1],))
-			if cfg['cron'].has_key('send_email') and cfg['cron']['send_email'] == 'yes':
+			if 'send_email' in cfg['cron'] and cfg['cron']['send_email'] == 'yes':
 				send_msg( "PGP key deleted", "keyDeleted.md", row[2])
 
 		connection.commit()
@@ -108,4 +108,4 @@ if cfg.has_key('database') and cfg['database'].has_key('enabled') and cfg['datab
 		appendLog('Deleted key for <' + row[0] + '>')
 		connection.commit()
 else:
-	print "Warning: doing nothing since database settings are not configured!"
+	print("Warning: doing nothing since database settings are not configured!")
