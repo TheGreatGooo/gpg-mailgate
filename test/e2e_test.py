@@ -32,9 +32,6 @@ from time import sleep
 RELAY_SCRIPT = "test/relay.py"
 CONFIG_FILE = "test/gpg-mailgate.conf"
 
-KEY_HOME = "test/keyhome"
-CERT_HOME = "test/certs"
-
 PYTHON_BIN = "python2.7"
 
 def build_config(config):
@@ -86,28 +83,29 @@ def report_result(message_file, expected, test_output):
     else:
         status = "Failure"
 
-    print "%s %s" % (message_file.ljust(30, '.'), status)
+    print message_file.ljust(30), status
 
-def frozen_time_expr(timestamp):
-    if timestamp is None:
-        return ""
-    else:
-        return "GPG_FROZEN_TIME=%s" % (timestamp)
+def execute_e2e_test(case_name, config, config_path):
+    """Read test case configuration from config and run that test case.
 
-def execute_e2e_test(message_file, expected, **kwargs):
+    Parameter case_name should refer to a section in test
+    config file.  Each of these sections should contain
+    following properties: 'descr', 'to', 'in' and 'out'.
+    """
+
     test_command = "GPG_MAILGATE_CONFIG=%s %s gpg-mailgate.py %s < %s" % (
-        kwargs["config_path"],
+        config_path,
         PYTHON_BIN,
-        kwargs["to_addr"],
-        message_file)
-    result_command = "%s %s %d" % (PYTHON_BIN, RELAY_SCRIPT, kwargs["port"])
+        config.get(case_name, "to"),
+        config.get(case_name, "in"))
+    result_command = "%s %s %d" % (PYTHON_BIN, config.get("relay", "script"), config.getint("relay", "port"))
 
     logging.debug("Spawning relay: '%s'" % (result_command))
     pipe = os.popen(result_command, 'r')
 
     logging.debug("Spawning GPG-Lacre: '%s'" % (test_command))
     msgin = os.popen(test_command, 'w')
-    msgin.write(load_file(message_file))
+    msgin.write(load_file(config.get(case_name, "in")))
     msgin.close()
 
     testout = pipe.read()
@@ -115,7 +113,7 @@ def execute_e2e_test(message_file, expected, **kwargs):
 
     logging.debug("Read %d characters of test output: '%s'" % (len(testout), testout))
 
-    report_result(message_file, expected, testout)
+    report_result(config.get(case_name, "in"), config.get(case_name, "out"), testout)
 
 def load_test_config():
     cp = ConfigParser.ConfigParser()
@@ -125,30 +123,27 @@ def load_test_config():
 
 
 config = load_test_config()
-log_paths = {"e2e": "test/logs/e2e.log",
-			 "lacre": "test/logs/gpg-mailgate.log"}
 
-logging.basicConfig(filename	= log_paths["e2e"],
-                    format		= "%(asctime)s %(pathname)s:%(lineno)d %(levelname)s [%(funcName)s] %(message)s",
-                    datefmt		= "%Y-%m-%d %H:%M:%S",
+logging.basicConfig(filename	= config.get("tests", "e2e_log"),
+                    # Get raw values of log and date formats because they
+                    # contain %-sequences and we don't want them to be expanded
+                    # by the ConfigParser.
+                    format		= config.get("tests", "e2e_log_format", True),
+                    datefmt		= config.get("tests", "e2e_log_datefmt", True),
                     level		= logging.DEBUG)
 
 config_path = os.getcwd() + "/" + CONFIG_FILE
 
 write_test_config(config_path,
                   port				= config.getint("relay", "port"),
-                  gpg_keyhome		= KEY_HOME,
-                  smime_certpath	= CERT_HOME,
-                  log_file			= log_paths["lacre"])
+                  gpg_keyhome		= config.get("dirs", "keys"),
+                  smime_certpath	= config.get("dirs", "certs"),
+                  log_file			= config.get("tests", "lacre_log"))
 
 for case_no in range(1, config.getint("tests", "cases")+1):
     case_name = "case-%d" % (case_no)
-    print "Executing: %s" % (config.get(case_name, "descr"))
+    logging.info("Executing %s: %s", case_name, config.get(case_name, "descr"))
 
-    execute_e2e_test(config.get(case_name, "in"),
-                     config.get(case_name, "out"),
-                     config_path	= config_path,
-                     to_addr		= config.get(case_name, "to"),
-                     port			= config.getint("relay", "port"))
+    execute_e2e_test(case_name, config, config_path)
 
-print "See diagnostic output for details. Tests: '%s', Lacre: '%s'" % (log_paths["e2e"], log_paths["lacre"])
+print "See diagnostic output for details. Tests: '%s', Lacre: '%s'" % (config.get("tests", "e2e_log"), config.get("tests", "lacre_log"))
