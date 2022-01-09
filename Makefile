@@ -1,4 +1,4 @@
-PYTHON = python2.7
+PYTHON = python3.8
 
 .PHONY: test pre-clean clean
 

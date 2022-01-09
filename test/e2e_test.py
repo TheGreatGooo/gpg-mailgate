@@ -1,4 +1,4 @@
-#!/usr/local/bin/python2
+#!/usr/local/bin/python3.8
 
 #
 #	gpg-mailgate
@@ -32,7 +32,7 @@ from time import sleep
 RELAY_SCRIPT = "test/relay.py"
 CONFIG_FILE = "test/gpg-mailgate.conf"
 
-PYTHON_BIN = "python2.7"
+PYTHON_BIN = "python3.8"
 
 def build_config(config):
     cp = configparser.ConfigParser()
@@ -55,7 +55,7 @@ def build_config(config):
     cp.set("enc_keymap", "alice@disposlab", "1CD245308F0963D038E88357973CF4D9387C44D7")
     cp.set("enc_keymap", "bob@disposlab", "19CF4B47ECC9C47AFA84D4BD96F39FDA0E31BB67")
 
-    logging.debug("Created config with keyhome=%s, cert_path=%s and relay at port %d" %
+    logging.debug("Created config with keyhome=%s, cert_path=%s and relay at port %s" %
                   (config["gpg_keyhome"], config["smime_certpath"], config["port"]))
     return cp
 
@@ -128,14 +128,14 @@ logging.basicConfig(filename	= config.get("tests", "e2e_log"),
                     # Get raw values of log and date formats because they
                     # contain %-sequences and we don't want them to be expanded
                     # by the ConfigParser.
-                    format		= config.get("tests", "e2e_log_format", True),
-                    datefmt		= config.get("tests", "e2e_log_datefmt", True),
+                    format		= config.get("tests", "e2e_log_format", raw=True),
+                    datefmt		= config.get("tests", "e2e_log_datefmt", raw=True),
                     level		= logging.DEBUG)
 
 config_path = os.getcwd() + "/" + CONFIG_FILE
 
 write_test_config(config_path,
-                  port				= config.getint("relay", "port"),
+                  port				= config.get("relay", "port"),
                   gpg_keyhome		= config.get("dirs", "keys"),
                   smime_certpath	= config.get("dirs", "certs"),
                   log_file			= config.get("tests", "lacre_log"))

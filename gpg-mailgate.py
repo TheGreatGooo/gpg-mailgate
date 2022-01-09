@@ -255,7 +255,7 @@ def decrypt_inline_with_attachments( payloads, success, message = None ):
 				# There was no encrypted payload found, so the original payload is attached
 				message.attach(payload)
 
- 	return message, success
+	return message, success
 
 def decrypt_inline_without_attachments( decrypted_message ):
 
@@ -379,9 +379,9 @@ def gpg_encrypt( raw_message, recipients ):
 				raw_message_mime['X-GPG-Mailgate'] = 'Encrypted by GPG Mailgate'
 
 			if 'Content-Transfer-Encoding' in raw_message_mime:
-                                raw_message_mime.replace_header('Content-Transfer-Encoding', '8BIT')
-                        else:
-                                raw_message_mime['Content-Transfer-Encoding'] = '8BIT'
+				raw_message_mime.replace_header('Content-Transfer-Encoding', '8BIT')
+			else:
+				raw_message_mime['Content-Transfer-Encoding'] = '8BIT'
 
 			encrypted_payloads = encrypt_all_payloads_mime( raw_message_mime, gpg_to_cmdline_mime )
 			raw_message_mime.set_payload( encrypted_payloads )
@@ -396,9 +396,9 @@ def gpg_encrypt( raw_message, recipients ):
 				raw_message_inline['X-GPG-Mailgate'] = 'Encrypted by GPG Mailgate'
 
 			if 'Content-Transfer-Encoding' in raw_message_inline:
-                                raw_message_inline.replace_header('Content-Transfer-Encoding', '8BIT')
-                        else:
-                                raw_message_inline['Content-Transfer-Encoding'] = '8BIT'
+				raw_message_inline.replace_header('Content-Transfer-Encoding', '8BIT')
+			else:
+				raw_message_inline['Content-Transfer-Encoding'] = '8BIT'
 
 			encrypted_payloads = encrypt_all_payloads_inline( raw_message_inline, gpg_to_cmdline_inline )
 			raw_message_inline.set_payload( encrypted_payloads )
@@ -632,8 +632,8 @@ def send_msg( message, recipients ):
 		log("Sending email to: <%s>" % '> <'.join( recipients ))
 		relay = (cfg['relay']['host'], int(cfg['relay']['port']))
 		smtp = smtplib.SMTP(relay[0], relay[1])
-                if 'relay' in cfg and 'starttls' in cfg['relay'] and cfg['relay']['starttls'] == 'yes':
-                    smtp.starttls()
+		if 'relay' in cfg and 'starttls' in cfg['relay'] and cfg['relay']['starttls'] == 'yes':
+			smtp.starttls()
 		smtp.sendmail( from_addr, recipients, message )
 	else:
 		log("No recipient found")
@@ -658,7 +658,7 @@ def sort_recipients( raw_message, from_addr, to_addrs ):
 		return
 
 	first_payload = first_payload.get_payload(decode=True)
-	if "-----BEGIN PGP MESSAGE-----" in first_payload and "-----END PGP MESSAGE-----" in first_payload:
+	if b"-----BEGIN PGP MESSAGE-----" in first_payload and b"-----END PGP MESSAGE-----" in first_payload:
 		if verbose:
 			log("Message is already encrypted as PGP/INLINE. Encryption aborted.")
 		send_msg(raw_message.as_string(), recipients_left)
