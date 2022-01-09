@@ -1,4 +1,4 @@
-From: Bob <bob@localhost>
+From: Dave <dave@localhost>
 To: Alice <alice@localhost>
 Subject: Test
 

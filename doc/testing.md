@@ -6,7 +6,7 @@ feed some input to GPG Mailgate and inspect the output.
 
 ## Running tests
 
-To run tests, use command `make test`.
+To run tests, use command `make test` or `make unittest`.
 
 Tests produce some helpful logs, so inspect contents of `test/logs` directory
 if something goes wrong.

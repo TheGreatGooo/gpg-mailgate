@@ -1,5 +1,5 @@
-From: Bob <bob@localhost>
-To: Alice <alice@localhost>
+From: Dave <dave@localhost>
+To: Carlos <carlos@localhost>
 Subject: Test
 
 Body of the message.
