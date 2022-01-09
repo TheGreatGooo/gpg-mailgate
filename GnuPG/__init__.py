@@ -58,6 +58,7 @@ def public_keys( keyhome ):
 	fingerprint = None
 	email = None
 	for line in p.stdout.readlines():
+		line = line.decode('utf-8')
 		if line[0:3] == LINE_FINGERPRINT:
 			fingerprint = line.split(':')[POS_FINGERPRINT]
 		if line[0:3] == LINE_USER_ID:
@@ -120,7 +121,7 @@ def delete_key( keyhome, email ):
 class GPGEncryptor:
 	def __init__(self, keyhome, recipients = None, charset = None):
 		self._keyhome = keyhome
-		self._message = ''
+		self._message = b''
 		self._recipients = list()
 		self._charset = charset
 		if recipients != None:

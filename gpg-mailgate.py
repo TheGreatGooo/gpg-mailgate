@@ -470,7 +470,7 @@ def encrypt_all_payloads_mime( message, gpg_to_cmdline ):
 def encrypt_payload( payload, gpg_to_cmdline, check_nested = True ):
 
 	raw_payload = payload.get_payload(decode=True)
-	if check_nested and "-----BEGIN PGP MESSAGE-----" in raw_payload and "-----END PGP MESSAGE-----" in raw_payload:
+	if check_nested and b"-----BEGIN PGP MESSAGE-----" in raw_payload and b"-----END PGP MESSAGE-----" in raw_payload:
 		if verbose:
 			log("Message is already pgp encrypted. No nested encryption needed.")
 		return payload
@@ -596,9 +596,13 @@ def sanitize_case_sense( address ):
 	if get_bool_from_cfg('default', 'mail_case_insensitive', 'yes'):
 		address = address.lower()
 	else:
-		splitted_address = address.split('@')
+		if isinstance(address, str):
+			sep = '@'
+		else:
+			sep = b'@'
+		splitted_address = address.split(sep)
 		if len(splitted_address) > 1:
-			address = splitted_address[0] + '@' + splitted_address[1].lower()
+			address = splitted_address[0] + sep + splitted_address[1].lower()
 
 	return address
 
