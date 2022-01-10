@@ -1,6 +1,16 @@
-PYTHON = python3.8
-
+.POSIX:
 .PHONY: test unittest pre-clean clean
+
+#
+# On systems where Python 3.x binary has a different name, just
+# overwrite the name/path on the command line, like:
+#
+#     make test PYTHON=/usr/local/bin/python3.8
+#
+# This marco is passed via environment to test/e2e_test.py, where it's
+# used to compute further commands.
+#
+PYTHON = python3
 
 #
 # Run a set of end-to-end tests.

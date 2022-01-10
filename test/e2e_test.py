@@ -88,13 +88,15 @@ def execute_e2e_test(case_name, config, config_path):
     config file.  Each of these sections should contain
     following properties: 'descr', 'to', 'in' and 'out'.
     """
+    # This environment variable is set in Makefile.
+    python_path = os.getenv('PYTHON', 'python3')
 
     test_command = "GPG_MAILGATE_CONFIG=%s %s gpg-mailgate.py %s < %s" % (
         config_path,
-        config.get("tests", "python_path"),
+        python_path,
         config.get(case_name, "to"),
         config.get(case_name, "in"))
-    result_command = "%s %s %d" % (config.get("tests", "python_path"), config.get("relay", "script"), config.getint("relay", "port"))
+    result_command = "%s %s %d" % (python_path, config.get("relay", "script"), config.getint("relay", "port"))
 
     logging.debug("Spawning relay: '%s'" % (result_command))
     pipe = os.popen(result_command, 'r')
