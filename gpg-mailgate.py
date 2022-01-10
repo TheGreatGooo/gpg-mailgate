@@ -39,9 +39,14 @@ import traceback
 from M2Crypto import BIO, Rand, SMIME, X509
 from email.mime.message import MIMEMessage
 
+# Environment variable name we read to retrieve configuration path.  This is to
+# enable non-root users to set up and run GPG Mailgate and to make the software
+# testable.
+CONFIG_PATH_ENV = "GPG_MAILGATE_CONFIG"
+
 # Read configuration from /etc/gpg-mailgate.conf
 _cfg = RawConfigParser()
-_cfg.read('/etc/gpg-mailgate.conf')
+_cfg.read(os.getenv(CONFIG_PATH_ENV, '/etc/gpg-mailgate.conf'))
 cfg = dict()
 for sect in _cfg.sections():
 	cfg[sect] = dict()
