@@ -30,6 +30,7 @@ nosetests.xml
 test/logs
 test/tmp
 test/gpg-mailgate.conf
+test/keyhome/random_seed
 
 # Emacs files
 *~
