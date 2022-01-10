@@ -1,6 +1,6 @@
 PYTHON = python3.8
 
-.PHONY: test pre-clean clean
+.PHONY: test unittest pre-clean clean
 
 #
 # Run a set of end-to-end tests.

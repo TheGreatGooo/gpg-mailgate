@@ -1,5 +1,3 @@
-#!/usr/local/bin/python3.8
-
 #
 #	gpg-mailgate
 #
@@ -31,8 +29,6 @@ from time import sleep
 
 RELAY_SCRIPT = "test/relay.py"
 CONFIG_FILE = "test/gpg-mailgate.conf"
-
-PYTHON_BIN = "python3.8"
 
 def build_config(config):
     cp = configparser.ConfigParser()
@@ -95,10 +91,10 @@ def execute_e2e_test(case_name, config, config_path):
 
     test_command = "GPG_MAILGATE_CONFIG=%s %s gpg-mailgate.py %s < %s" % (
         config_path,
-        PYTHON_BIN,
+        config.get("tests", "python_path"),
         config.get(case_name, "to"),
         config.get(case_name, "in"))
-    result_command = "%s %s %d" % (PYTHON_BIN, config.get("relay", "script"), config.getint("relay", "port"))
+    result_command = "%s %s %d" % (config.get("tests", "python_path"), config.get("relay", "script"), config.getint("relay", "port"))
 
     logging.debug("Spawning relay: '%s'" % (result_command))
     pipe = os.popen(result_command, 'r')
