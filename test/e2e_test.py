@@ -53,19 +53,18 @@ def build_config(config):
     cp.set("enc_keymap", "alice@disposlab", "1CD245308F0963D038E88357973CF4D9387C44D7")
     cp.set("enc_keymap", "bob@disposlab", "19CF4B47ECC9C47AFA84D4BD96F39FDA0E31BB67")
 
-    logging.debug("Created config with keyhome=%s, cert_path=%s and relay at port %s" %
-                  (config["gpg_keyhome"], config["smime_certpath"], config["port"]))
+    logging.debug(f"Created config with keyhome={config['gpg_keyhome']}, cert_path={config['smime_certpath']} and relay at port {config['port']}")
     return cp
 
 def write_test_config(outfile, **config):
-    logging.debug("Generating configuration with %s" % repr(config))
+    logging.debug(f"Generating configuration with {config!r}")
 
     out = open(outfile, "w+")
     cp = build_config(config)
     cp.write(out)
     out.close()
 
-    logging.debug("Wrote configuration to %s" % outfile)
+    logging.debug(f"Wrote configuration to {outfile}")
 
 def load_file(name):
 	f = open(name, 'r')
@@ -101,14 +100,12 @@ def execute_e2e_test(case_name, config, config_path):
                  config.get("relay", "script"),
                  config.get("relay", "port")]
 
-    logging.debug("Spawning relay: '%s'" % (relay_cmd))
+    logging.debug(f"Spawning relay: {relay_cmd}")
     relay_proc = subprocess.Popen(relay_cmd,
                                   stdin = None,
                                   stdout = subprocess.PIPE)
 
-    logging.debug("Spawning GPG-Lacre: '%s', stdin = %s"
-                  % (gpglacre_cmd,
-                     config.get(case_name, "in")))
+    logging.debug(f"Spawning GPG-Lacre: {gpglacre_cmd}, stdin = {config.get(case_name, 'in')}")
 
     # pass PATH because otherwise it would be dropped
     gpglacre_proc = subprocess.run(gpglacre_cmd,
@@ -123,7 +120,7 @@ def execute_e2e_test(case_name, config, config_path):
     (testout, _) = relay_proc.communicate()
     testout = testout.decode('utf-8')
 
-    logging.debug("Read %d characters of test output: '%s'" % (len(testout), testout))
+    logging.debug(f"Read {len(testout)} characters of test output: '{testout}'")
 
     report_result(config.get(case_name, "in"), config.get(case_name, "out"), testout)
 
@@ -153,8 +150,8 @@ write_test_config(config_path,
                   log_file			= config.get("tests", "lacre_log"))
 
 for case_no in range(1, config.getint("tests", "cases")+1):
-    case_name = "case-%d" % (case_no)
-    logging.info("Executing %s: %s", case_name, config.get(case_name, "descr"))
+    case_name = f"case-{case_no}"
+    logging.info(f"Executing {case_name}: {config.get(case_name, 'descr')}")
 
     execute_e2e_test(case_name, config, config_path)
 
