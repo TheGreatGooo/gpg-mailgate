@@ -94,7 +94,7 @@ def gpg_decrypt( raw_message, recipients ):
 		keys[fingerprint] = sanitize_case_sense(keys[fingerprint])
 
 	for to in recipients:
-		if to in list(keys.values()) and not get_bool_from_cfg('default', 'dec_keymap_only', 'yes'):
+		if to in keys.values() and not get_bool_from_cfg('default', 'dec_keymap_only', 'yes'):
 			gpg_to.append(to)
 		# Is this recipient defined in regex for default decryption?
 		elif not (dec_regex is None) and not (re.match(dec_regex, to) is None):
@@ -106,7 +106,7 @@ def gpg_decrypt( raw_message, recipients ):
 			if not cfg['dec_keymap'][to] in keys:
 				log("Key '%s' in decryption keymap not found in keyring for email address '%s'. Won't decrypt." % (cfg['dec_keymap'][to], to))
 				# Avoid unwanted encryption if set
-				if to in list(keys.values()) and get_bool_from_cfg('default', 'failsave_dec', 'yes'):
+				if to in keys.values() and get_bool_from_cfg('default', 'failsave_dec', 'yes'):
 					noenc_to.append(to)
 				else:
 					ungpg_to.append(to)
@@ -116,7 +116,7 @@ def gpg_decrypt( raw_message, recipients ):
 			if verbose:
 				log("Recipient (%s) not in PGP domain list for decrypting." % to)
 			# Avoid unwanted encryption if set
-			if to in list(keys.values()) and get_bool_from_cfg('default', 'failsave_dec', 'yes'):
+			if to in keys.values() and get_bool_from_cfg('default', 'failsave_dec', 'yes'):
 				noenc_to.append(to)
 			else:
 				ungpg_to.append(to)
@@ -317,7 +317,7 @@ def gpg_encrypt( raw_message, recipients ):
 				log("Key '%s' in encrypt keymap not found in keyring for email address '%s'." % (cfg['enc_keymap'][to], to))
 
 		# Check if key in keychain is present
-		if to in list(keys.values()) and not get_bool_from_cfg('default', 'enc_keymap_only', 'yes'):
+		if to in keys.values() and not get_bool_from_cfg('default', 'enc_keymap_only', 'yes'):
 			gpg_to.append( (to, to) )
 			continue
 
@@ -341,7 +341,7 @@ def gpg_encrypt( raw_message, recipients ):
 		ungpg_to.append(to)
 
 	if gpg_to != list():
-		log("Encrypting email to: %s" % ' '.join( [x[0] for x in gpg_to] ))
+		log("Encrypting email to: %s" % ' '.join( x[0] for x in gpg_to ))
 
 		# Getting PGP style for recipient
 		gpg_to_smtp_mime = list()
