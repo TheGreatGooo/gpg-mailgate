@@ -1,5 +1,3 @@
-#!/usr/local/bin/python2
-
 #
 #	gpg-mailgate
 #
@@ -22,9 +20,11 @@
 import os
 import sys
 
+import subprocess
+
 import difflib
 
-import ConfigParser
+import configparser
 import logging
 
 from time import sleep
@@ -32,10 +32,8 @@ from time import sleep
 RELAY_SCRIPT = "test/relay.py"
 CONFIG_FILE = "test/gpg-mailgate.conf"
 
-PYTHON_BIN = "python2.7"
-
 def build_config(config):
-    cp = ConfigParser.ConfigParser()
+    cp = configparser.ConfigParser()
 
     cp.add_section("logging")
     cp.set("logging", "file", config["log_file"])
@@ -55,26 +53,25 @@ def build_config(config):
     cp.set("enc_keymap", "alice@disposlab", "1CD245308F0963D038E88357973CF4D9387C44D7")
     cp.set("enc_keymap", "bob@disposlab", "19CF4B47ECC9C47AFA84D4BD96F39FDA0E31BB67")
 
-    logging.debug("Created config with keyhome=%s, cert_path=%s and relay at port %d" %
-                  (config["gpg_keyhome"], config["smime_certpath"], config["port"]))
+    logging.debug(f"Created config with keyhome={config['gpg_keyhome']}, cert_path={config['smime_certpath']} and relay at port {config['port']}")
     return cp
 
 def write_test_config(outfile, **config):
-    logging.debug("Generating configuration with %s" % repr(config))
+    logging.debug(f"Generating configuration with {config!r}")
 
     out = open(outfile, "w+")
     cp = build_config(config)
     cp.write(out)
     out.close()
 
-    logging.debug("Wrote configuration to %s" % outfile)
+    logging.debug(f"Wrote configuration to {outfile}")
 
 def load_file(name):
 	f = open(name, 'r')
 	contents = f.read()
 	f.close()
 
-	return contents
+	return bytes(contents, 'utf-8')
 
 def report_result(message_file, expected, test_output):
     status = None
@@ -83,7 +80,7 @@ def report_result(message_file, expected, test_output):
     else:
         status = "Failure"
 
-    print message_file.ljust(30), status
+    print(message_file.ljust(30), status)
 
 def execute_e2e_test(case_name, config, config_path):
     """Read test case configuration from config and run that test case.
@@ -92,31 +89,43 @@ def execute_e2e_test(case_name, config, config_path):
     config file.  Each of these sections should contain
     following properties: 'descr', 'to', 'in' and 'out'.
     """
+    # This environment variable is set in Makefile.
+    python_path = os.getenv('PYTHON', 'python3')
 
-    test_command = "GPG_MAILGATE_CONFIG=%s %s gpg-mailgate.py %s < %s" % (
-        config_path,
-        PYTHON_BIN,
-        config.get(case_name, "to"),
-        config.get(case_name, "in"))
-    result_command = "%s %s %d" % (PYTHON_BIN, config.get("relay", "script"), config.getint("relay", "port"))
+    gpglacre_cmd = [python_path,
+                    "gpg-mailgate.py",
+                    config.get(case_name, "to")]
 
-    logging.debug("Spawning relay: '%s'" % (result_command))
-    pipe = os.popen(result_command, 'r')
+    relay_cmd = [python_path,
+                 config.get("relay", "script"),
+                 config.get("relay", "port")]
 
-    logging.debug("Spawning GPG-Lacre: '%s'" % (test_command))
-    msgin = os.popen(test_command, 'w')
-    msgin.write(load_file(config.get(case_name, "in")))
-    msgin.close()
+    logging.debug(f"Spawning relay: {relay_cmd}")
+    relay_proc = subprocess.Popen(relay_cmd,
+                                  stdin = None,
+                                  stdout = subprocess.PIPE)
 
-    testout = pipe.read()
-    pipe.close()
+    logging.debug(f"Spawning GPG-Lacre: {gpglacre_cmd}, stdin = {config.get(case_name, 'in')}")
 
-    logging.debug("Read %d characters of test output: '%s'" % (len(testout), testout))
+    # pass PATH because otherwise it would be dropped
+    gpglacre_proc = subprocess.run(gpglacre_cmd,
+                                   input = load_file(config.get(case_name, "in")),
+                                   capture_output = True,
+                                   env = {"GPG_MAILGATE_CONFIG": config_path,
+                                          "PATH": os.getenv("PATH")})
+
+    # Let the relay process the data.
+    relay_proc.wait()
+
+    (testout, _) = relay_proc.communicate()
+    testout = testout.decode('utf-8')
+
+    logging.debug(f"Read {len(testout)} characters of test output: '{testout}'")
 
     report_result(config.get(case_name, "in"), config.get(case_name, "out"), testout)
 
 def load_test_config():
-    cp = ConfigParser.ConfigParser()
+    cp = configparser.ConfigParser()
     cp.read("test/e2e.ini")
 
     return cp
@@ -128,22 +137,22 @@ logging.basicConfig(filename	= config.get("tests", "e2e_log"),
                     # Get raw values of log and date formats because they
                     # contain %-sequences and we don't want them to be expanded
                     # by the ConfigParser.
-                    format		= config.get("tests", "e2e_log_format", True),
-                    datefmt		= config.get("tests", "e2e_log_datefmt", True),
+                    format		= config.get("tests", "e2e_log_format", raw=True),
+                    datefmt		= config.get("tests", "e2e_log_datefmt", raw=True),
                     level		= logging.DEBUG)
 
 config_path = os.getcwd() + "/" + CONFIG_FILE
 
 write_test_config(config_path,
-                  port				= config.getint("relay", "port"),
+                  port				= config.get("relay", "port"),
                   gpg_keyhome		= config.get("dirs", "keys"),
                   smime_certpath	= config.get("dirs", "certs"),
                   log_file			= config.get("tests", "lacre_log"))
 
 for case_no in range(1, config.getint("tests", "cases")+1):
-    case_name = "case-%d" % (case_no)
-    logging.info("Executing %s: %s", case_name, config.get(case_name, "descr"))
+    case_name = f"case-{case_no}"
+    logging.info(f"Executing {case_name}: {config.get(case_name, 'descr')}")
 
     execute_e2e_test(case_name, config, config_path)
 
-print "See diagnostic output for details. Tests: '%s', Lacre: '%s'" % (config.get("tests", "e2e_log"), config.get("tests", "lacre_log"))
+print("See diagnostic output for details. Tests: '%s', Lacre: '%s'" % (config.get("tests", "e2e_log"), config.get("tests", "lacre_log")))
