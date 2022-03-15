@@ -19,7 +19,7 @@
 #	along with gpg-mailgate source code. If not, see <http://www.gnu.org/licenses/>.
 #
 
-from ConfigParser import RawConfigParser
+from configparser import RawConfigParser
 from email.mime.base import MIMEBase
 from email.mime.multipart import MIMEMultipart
 import copy
@@ -39,9 +39,14 @@ import traceback
 from M2Crypto import BIO, Rand, SMIME, X509
 from email.mime.message import MIMEMessage
 
+# Environment variable name we read to retrieve configuration path.  This is to
+# enable non-root users to set up and run GPG Mailgate and to make the software
+# testable.
+CONFIG_PATH_ENV = "GPG_MAILGATE_CONFIG"
+
 # Read configuration from /etc/gpg-mailgate.conf
 _cfg = RawConfigParser()
-_cfg.read('/etc/gpg-mailgate.conf')
+_cfg.read(os.getenv(CONFIG_PATH_ENV, '/etc/gpg-mailgate.conf'))
 cfg = dict()
 for sect in _cfg.sections():
 	cfg[sect] = dict()
@@ -201,7 +206,7 @@ def decrypt_inline_with_attachments( payloads, success, message = None ):
 		message = email.mime.multipart.MIMEMultipart(payloads.get_content_subtype())
 
 	for payload in payloads.get_payload():
-		if( type( payload.get_payload() ) == list ):
+		if( isinstance(payload.get_payload(), list) ):
 			# Take care of cascaded MIME messages
 			submessage, subsuccess = decrypt_inline_with_attachments( payload, success )
 			message.attach(submessage)
@@ -250,7 +255,7 @@ def decrypt_inline_with_attachments( payloads, success, message = None ):
 				# There was no encrypted payload found, so the original payload is attached
 				message.attach(payload)
 
- 	return message, success
+	return message, success
 
 def decrypt_inline_without_attachments( decrypted_message ):
 
@@ -336,7 +341,7 @@ def gpg_encrypt( raw_message, recipients ):
 		ungpg_to.append(to)
 
 	if gpg_to != list():
-		log("Encrypting email to: %s" % ' '.join( map(lambda x: x[0], gpg_to) ))
+		log("Encrypting email to: %s" % ' '.join( x[0] for x in gpg_to ))
 
 		# Getting PGP style for recipient
 		gpg_to_smtp_mime = list()
@@ -373,10 +378,10 @@ def gpg_encrypt( raw_message, recipients ):
 			if get_bool_from_cfg('default', 'add_header', 'yes'):
 				raw_message_mime['X-GPG-Mailgate'] = 'Encrypted by GPG Mailgate'
 
-			if raw_message_mime.has_key('Content-Transfer-Encoding'):
-                                raw_message_mime.replace_header('Content-Transfer-Encoding','8BIT')
-                        else:
-                                raw_message_mime['Content-Transfer-Encoding'] = '8BIT'
+			if 'Content-Transfer-Encoding' in raw_message_mime:
+				raw_message_mime.replace_header('Content-Transfer-Encoding', '8BIT')
+			else:
+				raw_message_mime['Content-Transfer-Encoding'] = '8BIT'
 
 			encrypted_payloads = encrypt_all_payloads_mime( raw_message_mime, gpg_to_cmdline_mime )
 			raw_message_mime.set_payload( encrypted_payloads )
@@ -390,10 +395,10 @@ def gpg_encrypt( raw_message, recipients ):
 			if get_bool_from_cfg('default', 'add_header', 'yes'):
 				raw_message_inline['X-GPG-Mailgate'] = 'Encrypted by GPG Mailgate'
 
-			if raw_message_inline.has_key('Content-Transfer-Encoding'):
-                                raw_message_inline.replace_header('Content-Transfer-Encoding','8BIT')
-                        else:
-                                raw_message_inline['Content-Transfer-Encoding'] = '8BIT'
+			if 'Content-Transfer-Encoding' in raw_message_inline:
+				raw_message_inline.replace_header('Content-Transfer-Encoding', '8BIT')
+			else:
+				raw_message_inline['Content-Transfer-Encoding'] = '8BIT'
 
 			encrypted_payloads = encrypt_all_payloads_inline( raw_message_inline, gpg_to_cmdline_inline )
 			raw_message_inline.set_payload( encrypted_payloads )
@@ -406,11 +411,11 @@ def encrypt_all_payloads_inline( message, gpg_to_cmdline ):
 
 	# This breaks cascaded MIME messages. Blame PGP/INLINE.
 	encrypted_payloads = list()
-	if type( message.get_payload() ) == str:
+	if isinstance(message.get_payload(), str):
 		return encrypt_payload( message, gpg_to_cmdline ).get_payload()
 
 	for payload in message.get_payload():
-		if( type( payload.get_payload() ) == list ):
+		if( isinstance(payload.get_payload(), list) ):
 			encrypted_payloads.extend( encrypt_all_payloads_inline( payload, gpg_to_cmdline ) )
 		else:
 			encrypted_payloads.append( encrypt_payload( payload, gpg_to_cmdline ) )
@@ -432,13 +437,13 @@ def encrypt_all_payloads_mime( message, gpg_to_cmdline ):
 	submsg2.set_param('inline', "",                'Content-Disposition' )
 	submsg2.set_param('filename', "encrypted.asc", 'Content-Disposition' )
 
-	if type ( message.get_payload() ) == str:
+	if isinstance(message.get_payload(), str):
 		# WTF!  It seems to swallow the first line.  Not sure why.  Perhaps
 		# it's skipping an imaginary blank line someplace. (ie skipping a header)
 		# Workaround it here by prepending a blank line.
 		# This happens only on text only messages.
 		additionalSubHeader=""
-		if message.has_key('Content-Type') and not message['Content-Type'].startswith('multipart'):
+		if 'Content-Type' in message and not message['Content-Type'].startswith('multipart'):
 			additionalSubHeader="Content-Type: "+message['Content-Type']+"\n"
 		submsg2.set_payload(additionalSubHeader+"\n" +message.get_payload(decode=True))
 		check_nested = True
@@ -455,7 +460,7 @@ def encrypt_all_payloads_mime( message, gpg_to_cmdline ):
 	boundary = junk_msg.get_boundary()
 
     # This also modifies the boundary in the body of the message, ie it gets parsed.
-	if message.has_key('Content-Type'):
+	if 'Content-Type' in message:
 		message.replace_header('Content-Type', "multipart/encrypted; protocol=\"application/pgp-encrypted\";\nboundary=\"%s\"\n" % boundary)
 	else:
 		message['Content-Type'] = "multipart/encrypted; protocol=\"application/pgp-encrypted\";\nboundary=\"%s\"\n" % boundary
@@ -465,7 +470,7 @@ def encrypt_all_payloads_mime( message, gpg_to_cmdline ):
 def encrypt_payload( payload, gpg_to_cmdline, check_nested = True ):
 
 	raw_payload = payload.get_payload(decode=True)
-	if check_nested and "-----BEGIN PGP MESSAGE-----" in raw_payload and "-----END PGP MESSAGE-----" in raw_payload:
+	if check_nested and b"-----BEGIN PGP MESSAGE-----" in raw_payload and b"-----END PGP MESSAGE-----" in raw_payload:
 		if verbose:
 			log("Message is already pgp encrypted. No nested encryption needed.")
 		return payload
@@ -591,9 +596,13 @@ def sanitize_case_sense( address ):
 	if get_bool_from_cfg('default', 'mail_case_insensitive', 'yes'):
 		address = address.lower()
 	else:
-		splitted_address = address.split('@')
+		if isinstance(address, str):
+			sep = '@'
+		else:
+			sep = b'@'
+		splitted_address = address.split(sep)
 		if len(splitted_address) > 1:
-			address = splitted_address[0] + '@' + splitted_address[1].lower()
+			address = splitted_address[0] + sep + splitted_address[1].lower()
 
 	return address
 
@@ -603,7 +612,7 @@ def generate_message_from_payloads( payloads, message = None ):
 		message = email.mime.multipart.MIMEMultipart(payloads.get_content_subtype())
 
 	for payload in payloads.get_payload():
-		if( type( payload.get_payload() ) == list ):
+		if( isinstance(payload.get_payload(), list) ):
 			message.attach(generate_message_from_payloads(payload))
 		else:
 			message.attach(payload)
@@ -619,7 +628,7 @@ def get_first_payload( payloads ):
 
 def send_msg( message, recipients ):
 
-	recipients = filter(None, recipients)
+	recipients = [_f for _f in recipients if _f]
 	if recipients:
 		if not (get_bool_from_cfg('relay', 'host') and get_bool_from_cfg('relay', 'port')):
 			log("Missing settings for relay. Sending email aborted.")
@@ -627,8 +636,8 @@ def send_msg( message, recipients ):
 		log("Sending email to: <%s>" % '> <'.join( recipients ))
 		relay = (cfg['relay']['host'], int(cfg['relay']['port']))
 		smtp = smtplib.SMTP(relay[0], relay[1])
-                if cfg.has_key('relay') and cfg['relay'].has_key('starttls') and cfg['relay']['starttls'] == 'yes':
-                    smtp.starttls()
+		if 'relay' in cfg and 'starttls' in cfg['relay'] and cfg['relay']['starttls'] == 'yes':
+			smtp.starttls()
 		smtp.sendmail( from_addr, recipients, message )
 	else:
 		log("No recipient found")
@@ -653,7 +662,7 @@ def sort_recipients( raw_message, from_addr, to_addrs ):
 		return
 
 	first_payload = first_payload.get_payload(decode=True)
-	if "-----BEGIN PGP MESSAGE-----" in first_payload and "-----END PGP MESSAGE-----" in first_payload:
+	if b"-----BEGIN PGP MESSAGE-----" in first_payload and b"-----END PGP MESSAGE-----" in first_payload:
 		if verbose:
 			log("Message is already encrypted as PGP/INLINE. Encryption aborted.")
 		send_msg(raw_message.as_string(), recipients_left)

@@ -23,9 +23,20 @@ import subprocess
 import shutil
 import random
 import string
+import sys
+
+
+LINE_FINGERPRINT = 'fpr'
+LINE_USER_ID = 'uid'
+
+POS_FINGERPRINT = 9
+
+def build_command(key_home, *args, **kwargs):
+	cmd = ["gpg", '--homedir', key_home] + list(args)
+	return cmd
 
 def private_keys( keyhome ):
-	cmd = ['/usr/bin/gpg', '--homedir', keyhome, '--list-secret-keys', '--with-colons']
+	cmd = build_command(keyhome, '--list-secret-keys', '--with-colons')
 	p = subprocess.Popen( cmd, stdin=None, stdout=subprocess.PIPE, stderr=subprocess.PIPE )
 	p.wait()
 	keys = dict()
@@ -39,17 +50,25 @@ def private_keys( keyhome ):
 	return keys
 
 def public_keys( keyhome ):
-	cmd = ['/usr/bin/gpg', '--homedir', keyhome, '--list-keys', '--with-colons']
+	cmd = build_command(keyhome, '--list-keys', '--with-colons')
 	p = subprocess.Popen( cmd, stdin=None, stdout=subprocess.PIPE, stderr=subprocess.PIPE )
 	p.wait()
+
 	keys = dict()
+	fingerprint = None
+	email = None
 	for line in p.stdout.readlines():
-		if line[0:3] == 'uid' or line[0:3] == 'pub':
+		line = line.decode('utf-8')
+		if line[0:3] == LINE_FINGERPRINT:
+			fingerprint = line.split(':')[POS_FINGERPRINT]
+		if line[0:3] == LINE_USER_ID:
 			if ('<' not in line or '>' not in line):
 				continue
 			email = line.split('<')[1].split('>')[0]
-			fingerprint = line.split(':')[4]
+		if not (fingerprint is None or email is None):
 			keys[fingerprint] = email
+			fingerprint = None
+			email = None
 	return keys
 
 # confirms a key has a given email address
@@ -64,7 +83,7 @@ def confirm_key( content, email ):
 	os.mkdir(tmpkeyhome)
 	localized_env = os.environ.copy()
 	localized_env["LANG"] = "C"
-	p = subprocess.Popen( ['/usr/bin/gpg', '--homedir', tmpkeyhome, '--import', '--batch'], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=localized_env )
+	p = subprocess.Popen( build_command(tmpkeyhome, '--import', '--batch'), stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=localized_env )
 	result = p.communicate(input=content)[1]
 	confirmed = False
 
@@ -83,7 +102,7 @@ def confirm_key( content, email ):
 
 # adds a key and ensures it has the given email address
 def add_key( keyhome, content ):
-	p = subprocess.Popen( ['/usr/bin/gpg', '--homedir', keyhome, '--import', '--batch'], stdin=subprocess.PIPE, stdout=subprocess.PIPE,stderr=subprocess.PIPE )
+	p = subprocess.Popen( build_command(keyhome, '--import', '--batch'), stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE )
 	p.communicate(input=content)
 	p.wait()
 
@@ -93,7 +112,7 @@ def delete_key( keyhome, email ):
 
 	if result[1]:
 		# delete all keys matching this email address
-		p = subprocess.Popen( ['/usr/bin/gpg', '--homedir', keyhome, '--delete-key', '--batch', '--yes', result[1]], stdin=None, stdout=subprocess.PIPE, stderr=subprocess.PIPE )
+		p = subprocess.Popen( build_command(keyhome, '--delete-key', '--batch', '--yes', result[1]), stdin=None, stdout=subprocess.PIPE, stderr=subprocess.PIPE )
 		p.wait()
 		return True
 
@@ -102,7 +121,7 @@ def delete_key( keyhome, email ):
 class GPGEncryptor:
 	def __init__(self, keyhome, recipients = None, charset = None):
 		self._keyhome = keyhome
-		self._message = ''
+		self._message = b''
 		self._recipients = list()
 		self._charset = charset
 		if recipients != None:
@@ -112,12 +131,12 @@ class GPGEncryptor:
 		self._message += message
 
 	def encrypt(self):
-		p = subprocess.Popen( self._command(), stdin=subprocess.PIPE, stdout=subprocess.PIPE,stderr=subprocess.PIPE )
+		p = subprocess.Popen( self._command(), stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE )
 		encdata = p.communicate(input=self._message)[0]
 		return (encdata, p.returncode)
 
 	def _command(self):
-		cmd = ["/usr/bin/gpg", "--trust-model", "always", "--homedir", self._keyhome, "--batch", "--yes", "--pgp7", "--no-secmem-warning", "-a", "-e"]
+		cmd = build_command(self._keyhome, "--trust-model", "always", "--batch", "--yes", "--pgp7", "--no-secmem-warning", "-a", "-e")
 
 		# add recipients
 		for recipient in self._recipients:
@@ -140,11 +159,9 @@ class GPGDecryptor:
 		self._message += message
 
 	def decrypt(self):
-		p = subprocess.Popen( self._command(), stdin=subprocess.PIPE, stdout=subprocess.PIPE,stderr=subprocess.PIPE )
+		p = subprocess.Popen( self._command(), stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE )
 		decdata = p.communicate(input=self._message)[0]
 		return (decdata, p.returncode)
 
 	def _command(self):
-		cmd = ["/usr/bin/gpg", "--trust-model", "always", "--homedir", self._keyhome, "--batch", "--yes", "--no-secmem-warning", "-a", "-d"]
-
-		return cmd
+		return build_command(self._keyhome, "--trust-model", "always", "--batch", "--yes", "--no-secmem-warning", "-a", "-d")
