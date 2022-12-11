@@ -39,6 +39,10 @@ import traceback
 from M2Crypto import BIO, Rand, SMIME, X509
 from email.mime.message import MIMEMessage
 
+# import for decoding quoted-printable and base64 emails before encrypting
+import quopri
+import base64
+
 # Environment variable name we read to retrieve configuration path.  This is to
 # enable non-root users to set up and run GPG Mailgate and to make the software
 # testable.
@@ -379,6 +383,8 @@ def gpg_encrypt( raw_message, recipients ):
 				raw_message_mime['X-GPG-Mailgate'] = 'Encrypted by GPG Mailgate'
 
 			if 'Content-Transfer-Encoding' in raw_message_mime:
+				# Store Content Transfer Encoding header to be able to decode the email before encrypting it
+				raw_message_mime['Original-Content-Transfer-Encoding'] = raw_message_mime['Content-Transfer-Encoding']
 				raw_message_mime.replace_header('Content-Transfer-Encoding', '8BIT')
 			else:
 				raw_message_mime['Content-Transfer-Encoding'] = '8BIT'
@@ -445,7 +451,14 @@ def encrypt_all_payloads_mime( message, gpg_to_cmdline ):
 		additionalSubHeader=""
 		if 'Content-Type' in message and not message['Content-Type'].startswith('multipart'):
 			additionalSubHeader="Content-Type: "+message['Content-Type']+"\n"
-		submsg2.set_payload(additionalSubHeader+"\n" +message.get_payload(decode=True))
+			# Decode if Content-Transfer-Encoding is base64
+			if message['Original-Content-Transfer-Encoding'] == 'base64':
+				submsg2.set_payload(additionalSubHeader+"\n" +base64.b64decode(message.get_payload(decode=True)))
+			# Decode if Content-Transfer-Encoding is quoted-printable
+			elif message['Original-Content-Transfer-Encoding'] == 'quoted-printable':
+				submsg2.set_payload(additionalSubHeader+"\n" +quopri.decodestring(message.get_payload(decode=True)))
+			else:
+				submsg2.set_payload(additionalSubHeader+"\n" +message.get_payload(decode=True))
 		check_nested = True
 	else:
 		processed_payloads = generate_message_from_payloads(message)
