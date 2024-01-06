@@ -469,7 +469,7 @@ def encrypt_all_payloads_mime( message, gpg_to_cmdline ):
 
 def encrypt_payload( payload, gpg_to_cmdline, check_nested = True ):
 
-	raw_payload = payload.get_payload(decode=True)
+	raw_payload = payload.get_payload().encode()
 	if check_nested and b"-----BEGIN PGP MESSAGE-----" in raw_payload and b"-----END PGP MESSAGE-----" in raw_payload:
 		if verbose:
 			log("Message is already pgp encrypted. No nested encryption needed.")
@@ -638,7 +638,7 @@ def send_msg( message, recipients ):
 		smtp = smtplib.SMTP(relay[0], relay[1])
 		if 'relay' in cfg and 'starttls' in cfg['relay'] and cfg['relay']['starttls'] == 'yes':
 			smtp.starttls()
-		smtp.sendmail( from_addr, recipients, message )
+		smtp.sendmail( from_addr, recipients, message.encode() ) # convert to bytes for unicode support
 	else:
 		log("No recipient found")
 
