@@ -469,7 +469,7 @@ def encrypt_all_payloads_mime( message, gpg_to_cmdline ):
 
 def encrypt_payload( payload, gpg_to_cmdline, check_nested = True ):
 
-	raw_payload = payload.get_payload(decode=True)
+	raw_payload = payload.get_payload().encode()
 	if check_nested and b"-----BEGIN PGP MESSAGE-----" in raw_payload and b"-----END PGP MESSAGE-----" in raw_payload:
 		if verbose:
 			log("Message is already pgp encrypted. No nested encryption needed.")
