@@ -638,7 +638,7 @@ def send_msg( message, recipients ):
 		smtp = smtplib.SMTP(relay[0], relay[1])
 		if 'relay' in cfg and 'starttls' in cfg['relay'] and cfg['relay']['starttls'] == 'yes':
 			smtp.starttls()
-		smtp.sendmail( from_addr, recipients, message )
+		smtp.sendmail( from_addr, recipients, message.encode() ) // convert to bytes for unicode support
 	else:
 		log("No recipient found")
 
