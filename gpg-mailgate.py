@@ -445,7 +445,7 @@ def encrypt_all_payloads_mime( message, gpg_to_cmdline ):
 		additionalSubHeader=""
 		if 'Content-Type' in message and not message['Content-Type'].startswith('multipart'):
 			additionalSubHeader="Content-Type: "+message['Content-Type']+"\n"
-		submsg2.set_payload(additionalSubHeader+"\n" +message.get_payload(decode=True))
+		submsg2.set_payload(additionalSubHeader+"\n" +message.get_payload(decode=True).decode("utf-8"))
 		check_nested = True
 	else:
 		processed_payloads = generate_message_from_payloads(message)
